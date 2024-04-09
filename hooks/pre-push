@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Go to project directory
+cd "$(dirname "$0")/../.." || exit 1
+project_dir=$(pwd)
+echo "Go to $project_dir...."
+
+# Fetching origin
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
+git fetch origin master
+
+run_mvn_test() {
+    local module_path=$1
+    local module_name=$2
+
+    # Go to module
+    cd "$module_path" || exit 0
+    echo "Checking $(pwd)...."
+
+    # Compare changes
+    git diff --quiet origin/master "$current_branch" -- *.java *.properties *.env
+    if [ $? -eq 0 ] ; then
+        echo "No changes"
+    else
+        echo "Running 'mvn test' for module: $module_name"
+        mvn -B test
+        if [ $? -ne 0 ]; then
+            echo "Failed to run 'mvn test' for module: $module_name"
+            exit 1
+        fi
+    fi
+    cd ../
+}
+
+# Run tests each modules
+run_mvn_test "module-console/" "console"
+run_mvn_test "module-quarzt/" "quarzt"
+run_mvn_test "module-social/" "social"
